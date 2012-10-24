@@ -113,8 +113,10 @@ class eZSurveyFile extends eZSurveyQuestion
 
     if ( $http->hasPostVariable( $postSurveyAnswer ) )
     {
-        $surveyAnswer = $http->postVariable( $postSurveyAnswer );
-        $this->setAnswer( $surveyAnswer );
+        if( count($surveyAnswer) > 0 ) {
+          $surveyAnswer = $http->postVariable( $postSurveyAnswer );
+          $this->setAnswer( $surveyAnswer );
+        }
     }
 
     // let the answer() get the file because it can only be handled ONCE
@@ -123,7 +125,7 @@ class eZSurveyFile extends eZSurveyQuestion
     }
 
     if ( $this->attribute( 'mandatory' ) == 1 ) {
-      if( !$fileUploadAttempt || !$surveyAnswer || count($surveyAnswer) === 0 ) {
+      if( !$fileUploadAttempt && !$surveyAnswer ) {
         $validation['error'] = true;
         $validation['errors'][] = array( 'message' => ezpI18n::tr( 'survey', 'Please re-enter the file value', null,
         array( '%number' => $this->questionNumber() ) ),

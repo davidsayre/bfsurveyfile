@@ -11,8 +11,9 @@
                                                         'language_code', $language_code,
                                                         'metadata', $metadata,
                                                         'limit', $te_limit ))}
+  {* loop over files and render as links *}
   {section var=result loop=$results}
-    <li>{$result.value|wash('xhtml')}</li>
+    <li><a href="{concat('/',$result.value)}">{$result.value}</a></li>
   {/section}
   {/let}
   </ul>

@@ -141,7 +141,7 @@ class eZSurveyFile extends eZSurveyQuestion
     return $variableArray;
    }
 
-    //This is called during the refresh and store() and the FIRST time it's called it will be blank so check for that;    
+    //This is called during the processViewActions chain and storeResult();    
     function answer()
     {
       //option 1) check for already defined

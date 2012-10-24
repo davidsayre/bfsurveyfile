@@ -33,9 +33,15 @@ class eZSurveyFile extends eZSurveyQuestion
   {
     $bfsf_ini = eZINI::instance('bfsurveyfile.ini');
     $varPath = eZSys::storageDirectory();
+    $survey_object_id = 0;
+
+    //get survey object (lookup object ID, as the survey_id changes with each edit)
+    $survey = new eZSurveyType();
+    $surveyObject = $survey->fetchSurveyByID( $row['survey_id'] );
+    if($surveyObject) { $survey_object_id = $surveyObject->attribute('contentobject_id'); }
 
     //set directory paths
-    $surveyUploadDir = self::UPLOAD_DIR_BASE . '/'. self::UPLOAD_DIR_PREFIX . $row['survey_id'] . '/'; // syntax example: surveryfiles/survey_123/
+    $surveyUploadDir = self::UPLOAD_DIR_BASE . '/'. self::UPLOAD_DIR_PREFIX . $survey_object_id . '/'; // syntax example: surveryfiles/survey_123/
     $this->uploadPath = $varPath . '/'. $surveyUploadDir;
 
     //create directory if NOT exists

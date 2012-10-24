@@ -8,7 +8,7 @@ Installation:
 	5) edit the .htaccess (or apache .conf) with this rewrite rule
 		
 		#bfsurveyfile
-		RewriteRule ^var/([^/]+/)?storage/bfsurveyfile/.* - [L]		
+		RewriteRule ^var/([^/]+/)?storage/surveyfiles/.* - [L]
 	
 	You are now ready to add this 'file' datatype to surveys
 

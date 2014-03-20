@@ -46,7 +46,7 @@ class eZSurveyFile extends eZSurveyQuestion
 
     //create directory if NOT exists
     if (!is_dir($this->uploadPath)){
-      mkdir($this->uploadPath, 0777,true);
+      eZDir::mkdir($this->uploadPath, false, true);
     }
     //TODO: error if directory cannot be created
 

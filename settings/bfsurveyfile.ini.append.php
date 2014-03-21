@@ -7,5 +7,5 @@ AllowedExtensions[]=jpg
 AllowedExtensions[]=png
 
 #MaxFileSize in bytes
-MaxFileSize=4096000000
+#MaxFileSize=10485760
 */ ?>

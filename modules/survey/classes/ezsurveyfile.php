@@ -55,7 +55,9 @@ class eZSurveyFile extends eZSurveyQuestion
     if ( isset($allowedExtensions) ) { $this->allowedExtensions = $allowedExtensions; }
 
     //set max file size
-    $this->sizeLimit = $bfsf_ini->variable('SurveyFile', 'MaxFileSize');
+    if ($bfsf_ini->variable('SurveyFile', 'MaxFileSize') > 0) {
+      $this->sizeLimit = $bfsf_ini->variable('SurveyFile', 'MaxFileSize');
+    }
 
     $row[ 'type' ] = 'File';
     if ( !isset( $row['mandatory'] ) ) $row['mandatory'] = 0;

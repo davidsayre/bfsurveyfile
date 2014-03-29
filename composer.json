@@ -1,0 +1,7 @@
+{
+    "name": "beaconfire/bfsurveyfile",
+    "type": "ezpublish-legacy-extension",
+    "require": {
+        "ezsystems/ezpublish-legacy-installer": "*"
+    }
+}

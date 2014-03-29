@@ -12,9 +12,13 @@ class eZSurveyFile extends eZSurveyQuestion
     Limit to file size using ini setting : MaxFileSize
   */
 
-  /* notes:
-    eZSurveyQuestion->storeResult() loops over the answers
-    The file upload can only happen ONCE so it is in the answer()
+  /*
+    NOTE: This questiontype is unlike any other becuase the file upload must process only once.
+    eZSurvey->fetchQuestionList() loops over the questions calling question->processViewActions()
+    eZSurveyQuestion->storeResult() loops over the questions calling question->answer()
+    These two loops cannot communicate with eachother.
+    Attempts to use $this->var prove they are not the same instances.
+    Only a shared $_POST scope allows the file to be uploaded and path recorded, then found again in answer()
   */
 
   //this will be prepended to the directory name WITH the survey OBJECT_ID to create uniqueness
@@ -23,9 +27,8 @@ class eZSurveyFile extends eZSurveyQuestion
 
   var $uploadPath = '';
   var $allowedExtensions = array(); //TODO, get from question definition
-  var $sizeLimit = 1024000;
-  var $filePath;
-
+  var $sizeLimit = 10485760;
+  
   /*
    * constructor
    */
@@ -41,13 +44,14 @@ class eZSurveyFile extends eZSurveyQuestion
     if($surveyObject) { $survey_object_id = $surveyObject->attribute('contentobject_id'); }
 
     //set directory paths
-    $surveyUploadDir = self::UPLOAD_DIR_BASE . '/'. self::UPLOAD_DIR_PREFIX . $survey_object_id . '/'; // syntax example: surveryfiles/survey_123/
+    $surveyUploadDir = self::UPLOAD_DIR_BASE . '/'. self::UPLOAD_DIR_PREFIX . $survey_object_id . '/'; // syntax example: surveyfiles/survey_123/
     $this->uploadPath = $varPath . '/'. $surveyUploadDir;
 
     //create directory if NOT exists
     if (!is_dir($this->uploadPath)){
       eZDir::mkdir($this->uploadPath, false, true);
     }
+
     //TODO: error if directory cannot be created
 
     //set allowed file extensions
@@ -99,32 +103,50 @@ class eZSurveyFile extends eZSurveyQuestion
    /*
      * Checks input
      */
-   function processViewActions( &$validation, $params )
-   {
+  function processViewActions( &$validation, $params )
+  {
 
     $http = eZHTTPTool::instance();
     $variableArray = array();
 
     $prefix = eZSurveyType::PREFIX_ATTRIBUTE;
-    $answerValue = '';
     $surveyAnswer = '';
 
-    //Option 1) look for already saved value
     $postSurveyAnswer = $prefix . '_ezsurvey_answer_' . $this->ID . '_' . $this->contentObjectAttributeID();
     $postSurveyFile = $prefix . '_ezsurvey_file_' . $this->ID . '_' . $this->contentObjectAttributeID();
 
+    //Option 1) check for already saved value
     if ( $http->hasPostVariable( $postSurveyAnswer ) )
     {
-        if( count($surveyAnswer) > 0 ) {
-          $surveyAnswer = $http->postVariable( $postSurveyAnswer );
-          $this->setAnswer( $surveyAnswer );
+        $surveyAnswer = $http->postVariable( $postSurveyAnswer );
+        if( !empty($surveyAnswer) ) {
+            $this->setAnswer( $surveyAnswer );
+            $variableArray[ 'answer' ] = $surveyAnswer; //return answer for parsing
+            return $variableArray;
         }
     }
 
-    // let the answer() get the file because it can only be handled ONCE
-    if( isset( $_FILES[$postSurveyFile]) ) {
-      $fileUploadAttempt = true;
-    }
+    //Option 2) 
+    if ( array_key_exists($postSurveyFile,$_FILES) && !empty($_FILES[$postSurveyFile]) ) {
+        
+        $fileUploadAttempt = true;
+
+        $uploader = new eZSurveyFileUploader($postSurveyFile, $this->allowedExtensions, $this->sizeLimit);
+        $uploaderResult = $uploader->handleUpload( $this->uploadPath );
+        if(array_key_exists('info', $uploaderResult) ) { 
+            $fileName = $uploaderResult['info']['basename'];
+            $fileLabel = $uploaderResult['label'];  //normal or unique name
+            $filePath = $this->uploadPath . $fileName;
+
+            $surveyAnswer = $filePath;
+            $this->setAnswer($surveyAnswer); //answer for Survey->questionList compile pre storeResult()
+            $variableArray[ 'answer' ] = $surveyAnswer; //return answer for parsing
+
+            //CRITICAL STEP: Push the answer value BACK into post so that the next answer() call can get it
+            $_POST[$postSurveyAnswer] = $surveyAnswer; 
+        }
+
+      }
 
     if ( $this->attribute( 'mandatory' ) == 1 ) {
       if( !$fileUploadAttempt && !$surveyAnswer ) {
@@ -134,18 +156,16 @@ class eZSurveyFile extends eZSurveyQuestion
           'question_number' => $this->questionNumber(),
           'code' => 'general_answer_number_as_well',
           'question' => $this );
-        return false;
       }
     }
 
-    //can return blank if file
-    $variableArray[ 'answer' ] = $surveyAnswer;
-    return $variableArray;
-   }
+      return $variableArray;
+  }
 
     //This is called during the processViewActions chain and storeResult();    
     function answer()
     {
+
       //option 1) check for already defined
       if ( strlen($this->Answer) ) {
         return $this->Answer;
@@ -154,41 +174,14 @@ class eZSurveyFile extends eZSurveyQuestion
       $http = eZHTTPTool::instance();
       $prefix = eZSurveyType::PREFIX_ATTRIBUTE;
 
-      //option 2) check for file post
-      $postSurveyFile = $prefix . '_ezsurvey_file_' . $this->ID . '_' . $this->contentObjectAttributeID();
-      if ( array_key_exists($postSurveyFile,$_FILES) && !empty($_FILES[$postSurveyFile]) ) {
-        $uploader = new eZSurveyFileUploader($postSurveyFile, $this->allowedExtensions, $this->sizeLimit);
-        $result = $uploader->handleUpload( $this->uploadPath );
-        $filePath = '';
-        $fileSize = 0;
-        $fileLabel = '';
-
-        if(array_key_exists('info', $result) ) { 
-            $fileName = $result['info']['basename'];
-            $fileLabel = $result['label'];  //normal or unique name
-            $filePath = $this->uploadPath . $fileName;
-            $surveyAnswer = $filePath;
-        }
-
-        if(array_key_exists('size', $result) ) {
-          $fileSize = $result['size'];
-        }
-
-        //Set file specific params
-        $this->setAttribute( 'text2', $fileLabel );
-        $this->setAttribute( 'num2', $fileSize ); //set to value or zero
-        $this->setAnswer($surveyAnswer);
-        return $surveyAnswer;
-      }
-
-      //option 3) check for answer post
+      //option 2) check for answer in $_POST (trick from processViewAction or normal post)
       $postSurveyAnswer = $prefix . '_ezsurvey_answer_' . $this->ID . '_' . $this->contentObjectAttributeID();
       if ( $http->hasPostVariable( $postSurveyAnswer ) && strlen($http->postVariable( $postSurveyAnswer ) ) )
       {
           $surveyAnswer = $http->postVariable( $postSurveyAnswer );
           return $surveyAnswer;
       }    
-        
+      
       return $this->Default;
     }
 

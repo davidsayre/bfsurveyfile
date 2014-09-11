@@ -25,3 +25,11 @@ Functionality:
 Config: 
 	AllowedExtensions[] - 3 and 4 letter file extensions (.jpg, .png, .tiff)
 	MaxFileSize - byte count to limit file upload
+
+Troubleshooting:
+	If the bfsurvey extension loads before the ezsurvey extension the 'file' may not appear becuase the array is reset.
+	fix:
+		edit ezsurvey/settings/ezsurvey.ini.append.php and comment out the ExtensionDirectories[] init	
+		[QuestionTypeSettings]
+		# Comment out to allow append from other extensions
+		#ExtensionDirectories[]
